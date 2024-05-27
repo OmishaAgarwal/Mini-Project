@@ -1,12 +1,18 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # Market Segmentation in Retail Sector
+# ### Market Segmentation in Retail Sector
+#
+# This code performs market segmentation in the retail sector using K-Means clustering. It loads a CSV file containing customer data, explores the data, and performs clustering to segment the customers into different groups based on their satisfaction and loyalty.
 
-# ## Import the relevant libraries
-
-# In[4]:
-
+# #### Import the relevant libraries
+#
+# We import the following libraries:
+#
+# * `pandas` for data manipulation
+# * `numpy` for numerical computations
+# * `matplotlib` and `seaborn` for data visualization
+# * `sklearn` for clustering
 
 import pandas as pd 
 import numpy as np
@@ -14,151 +20,90 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 sns.set()
 from sklearn.cluster import KMeans
+from sklearn import preprocessing
 
-
-# ## Load the data
-
-# In[5]:
-
+# #### Load the data
+#
+# We load a CSV file named `MarketData.csv` into a pandas DataFrame using `pd.read_csv`.
 
 data = pd.read_csv ('MarketData.csv')
 
-
-# In[6]:
-
-
-# ## Plot the data
-
-# Create a preliminary plot to see if you can spot something
-
-# In[7]:
-
-
-plt.scatter(data['Satisfaction'],data['Loyalty'])
-plt.xlabel('Satisfaction')
-plt.ylabel('Loyalty')
-plt.show()
-
-
-# ## Plot the Age 
-
-# In[8]:
-
-
-plt.xticks([i for i in range(0,101,5)])
-plt.hist(data['Age'])
-plt.show()
-
-
-# ## Plot the Gender
-
-# In[9]:
-
-
-li=[0,0]
-for i in data['Gender']:
-    li[i]+=1
-print(li)
-labels = ['Male', 'Female']
-colors=['Turquoise', 'Orange']
-plt.pie(li,labels = labels,colors=colors, autopct="%1.1f%%",shadow=True)
-plt.show()
-
-
-# ## Select the features
-
-# In[10]:
-
-
-x = data.iloc[:,0:2]
-
-
-# ## Clustering
-
-# In[11]:
-
-
-kmeans = KMeans(4)
-kmeans.fit(x)
-
-
-# ## Clustering results
-
-# In[12]:
-
-
-clusters = x.copy()
-clusters['cluster_pred']=kmeans.fit_predict(x)
-clusters
-
-
-# In[13]:
-
-
-plt.scatter(clusters['Satisfaction'],clusters['Loyalty'],c=clusters['cluster_pred'],cmap='rainbow')
-plt.xlabel('Satisfaction')
-plt.ylabel('Loyalty')
-plt.show()
-
-
-# ## Standardize the variables
-
-# Let's standardize and check the new result
-
-# In[14]:
-
-
-from sklearn import preprocessing
-x_scaled = preprocessing.scale(x)
-x_scaled
-
-
-# ## Take advantage of the Elbow method
-
-# In[15]:
-
-
-wcss =[]
-for i in range(1,10):
-    # Clsuter solution with i clusters
-    kmeans = KMeans(i)
-    kmeans.fit(x_scaled)
-    wcss.append(kmeans.inertia_)
-    
-wcss
-
-
-# In[16]:
-
-
-plt.plot(range(1,10),wcss)
-plt.xlabel('Number of clusters')
-plt.ylabel('WCSS')
-plt.show()
-
-
-# ## Explore clustering solutions and select the number of clusters
-
-# In[17]:
-
-
-kmeans_new = KMeans(5)
-kmeans_new.fit(x_scaled)
-clusters_new = x.copy()
-clusters_new['cluster_pred'] = kmeans_new.fit_predict(x_scaled)
-
-
-# In[18]:
-
-
-clusters_new
-
-
-# In[19]:
-
-
-plt.scatter(clusters_new['Satisfaction'],clusters_new['Loyalty'],c=clusters_new['cluster_pred'],cmap='rainbow')
-plt.xlabel('Satisfaction')
-plt.ylabel('Loyalty')
-plt.show()
-
+# #### Data Exploration
+#
+# We perform some preliminary data exploration:
+#
+# * We plot a scatter plot of `Satisfaction` vs `Loyalty` to visualize the data.
+# * We plot a histogram of `Age` to visualize the age distribution.
+# * We plot a pie chart of `Gender` to visualize the gender distribution.
+
+def plot_scatter(data, x, y):
+    """
+    Plots a scatter plot of `x` vs `y` for the given data.
+
+    Parameters:
+    data (pandas.DataFrame): The data to plot.
+    x (str): The name of the x-axis variable.
+    y (str): The name of the y-axis variable.
+
+    Returns:
+    None
+    """
+    plt.scatter(data[x], data[y])
+    plt.xlabel(x)
+    plt.ylabel(y)
+    plt.show()
+
+def plot_histogram(data, column):
+    """
+    Plots a histogram of the given column for the given data.
+
+    Parameters:
+    data (pandas.DataFrame): The data to plot.
+    column (str): The name of the column to plot.
+
+    Returns:
+    None
+    """
+    plt.hist(data[column], bins=20)
+    plt.xlabel(column)
+    plt.ylabel('Frequency')
+    plt.show()
+
+def plot_pie(data, column):
+    """
+    Plots a pie chart of the given column for the given data.
+
+    Parameters:
+    data (pandas.DataFrame): The data to plot.
+    column (str): The name of the column to plot.
+
+    Returns:
+    None
+    """
+    labels = data[column].value_counts().index
+    sizes = data[column].value_counts().values
+    plt.pie(sizes, labels=labels, autopct='%1.1f%%')
+    plt.axis('equal')
+    plt.show()
+
+plot_scatter(data, 'Satisfaction', 'Loyalty')
+plot_histogram(data, 'Age')
+plot_pie(data, 'Gender')
+
+# #### Feature Selection
+#
+# We select the first two columns of the data (`Satisfaction` and `Loyalty`) as features for clustering.
+
+x = data.iloc[:, 0:2]
+
+# #### Clustering
+#
+# We perform K-Means clustering with 4 clusters using `KMeans` from `sklearn`. We fit the model to the selected features and predict the cluster labels.
+
+def kmeans_clustering(x, k):
+    """
+    Performs K-Means clustering with the given number of clusters on the given data.
+
+    Parameters:
+    x (pandas.DataFrame): The data to cluster.
+    k (int): The number of
