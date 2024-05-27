@@ -27,9 +27,6 @@ data = pd.read_csv ('MarketData.csv')
 # In[6]:
 
 
-data
-
-
 # ## Plot the data
 
 # Create a preliminary plot to see if you can spot something
@@ -62,8 +59,8 @@ li=[0,0]
 for i in data['Gender']:
     li[i]+=1
 print(li)
-labels = ['Male','Female']
-colors=['Turquoise','Orange']
+labels = ['Male', 'Female']
+colors=['Turquoise', 'Orange']
 plt.pie(li,labels = labels,colors=colors, autopct="%1.1f%%",shadow=True)
 plt.show()
 
