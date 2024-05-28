@@ -1,93 +1,113 @@
-import csv
-import math
+import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn.cluster import KMeans
+import numpy as np
 
-# Load the data
-data = []
-with open('MarketData.csv', 'r') as file:
-    reader = csv.reader(file)
-    next(reader)  # Skip the header
-    for row in reader:
-        data.append(row)
+# Set up Streamlit configuration
+st.set_page_config(page_title='Market Data Analysis and Clustering', layout='wide')
 
-# Convert data to float
-for i in range(len(data)):
-    for j in range(len(data[i])):
-        data[i][j] = float(data[i][j])
+# Custom CSS styles
+st.markdown("""
+    <style>
+    .main {
+        background-color: #f5f5f5;
+        padding: 20px;
+        border-radius: 10px;
+    }
+    .header {
+        font-size: 2em;
+        color: #333;
+        text-align: center;
+    }
+    .subheader {
+        font-size: 1.5em;
+        color: #555;
+    }
+    .sidebar .sidebar-content {
+        background: #f0f0f0;
+    }
+    .uploadedFile {
+        text-align: center;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-# Define functions for plotting
-def plot_scatter(data, x, y):
-    for i in range(len(data)):
-        print(f"({data[i][x]}, {data[i][y]})")
+# Streamlit setup
+st.markdown('<div class="header">Market Data Analysis and Clustering</div>', unsafe_allow_html=True)
+st.write("This app performs data analysis and clustering on market data.")
 
-def plot_histogram(data, column):
-    freq = {}
-    for i in range(len(data)):
-        if data[i][column] in freq:
-            freq[data[i][column]] += 1
-        else:
-            freq[data[i][column]] = 1
-    for key, value in freq.items():
-        print(f"{key}: {value}")
+# File upload
+uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
 
-def plot_pie(data, column):
-    freq = {}
-    for i in range(len(data)):
-        if data[i][column] in freq:
-            freq[data[i][column]] += 1
-        else:
-            freq[data[i][column]] = 1
-    for key, value in freq.items():
-        print(f"{key}: {value} ({value/len(data)*100:.2f}%)")
+if uploaded_file is not None:
+    # Load the data
+    data = pd.read_csv(uploaded_file)
 
-# Data exploration
-plot_scatter(data, 0, 1)
-plot_histogram(data, 2)
-plot_pie(data, 3)
+    # Define functions for plotting
+    def plot_scatter(data, x, y):
+        fig, ax = plt.subplots()
+        ax.scatter(data[x], data[y])
+        ax.set_xlabel(x)
+        ax.set_ylabel(y)
+        st.pyplot(fig)
 
-# Feature selection
-x = [[row[0], row[1]] for row in data]
+    def plot_histogram(data, column):
+        fig, ax = plt.subplots()
+        ax.hist(data[column], bins=20)
+        ax.set_xlabel(column)
+        ax.set_ylabel('Frequency')
+        st.pyplot(fig)
 
-# Clustering
-def euclidean_distance(x, y):
-    return math.sqrt((x[0] - y[0])**2 + (x[1] - y[1])**2)
+    def plot_pie(data, column):
+        fig, ax = plt.subplots()
+        labels = data[column].value_counts().index
+        sizes = data[column].value_counts().values
+        ax.pie(sizes, labels=labels, autopct='%1.1f%%')
+        ax.axis('equal')
+        st.pyplot(fig)
 
-def kmeans_clustering(x, k):
-    # Initialize centroids randomly
-    centroids = [x[i] for i in range(k)]
-    labels = [0] * len(x)
-    while True:
-        new_labels = []
-        for i in range(len(x)):
-            distances = [euclidean_distance(x[i], centroid) for centroid in centroids]
-            label = distances.index(min(distances))
-            new_labels.append(label)
-        if new_labels == labels:
-            break
-        labels = new_labels
-        centroids = [[0, 0] for _ in range(k)]
-        counts = [0] * k
-        for i in range(len(x)):
-            centroids[labels[i]][0] += x[i][0]
-            centroids[labels[i]][1] += x[i][1]
-            counts[labels[i]] += 1
-        for i in range(k):
-            centroids[i][0] /= counts[i]
-            centroids[i][1] /= counts[i]
-    return labels
+    # Data exploration
+    st.markdown('<div class="subheader">Data Exploration</div>', unsafe_allow_html=True)
+    plot_scatter(data, 'Satisfaction', 'Loyalty')
+    plot_histogram(data, 'Age')
+    plot_pie(data, 'Gender')
 
-labels = kmeans_clustering(x, 4)
+    # Feature selection
+    x = data[['Satisfaction', 'Loyalty']]
 
-# Add cluster labels to data
-for i in range(len(data)):
-    data[i].append(labels[i])
+    # Clustering
+    def kmeans_clustering(x, k):
+        kmeans = KMeans(n_clusters=k)
+        kmeans.fit(x)
+        labels = kmeans.labels_
+        return labels
 
-# Predict loyalty score based on cluster label
-loyalty_scores = [0, 0.5, 0.8, 1]
+    st.markdown('<div class="subheader">KMeans Clustering</div>', unsafe_allow_html=True)
+    k = st.slider('Select number of clusters for KMeans', 2, 10, 4)
+    labels = kmeans_clustering(x, k)
 
-# Add loyalty scores to data
-for i in range(len(data)):
-    data[i].append(loyalty_scores[data[i][4]])
+    # Add cluster labels to data
+    data['Cluster'] = labels
 
-# Visualize clustered data with loyalty scores
-for i in range(len(data)):
-    print(f"({data[i][0]}, {data[i][1]}) - Cluster {data[i][4]} - Loyalty Score {data[i][5]}")
+    # Visualize clustered data
+    st.markdown('<div class="subheader">Clustering Result</div>', unsafe_allow_html=True)
+    fig, ax = plt.subplots()
+    scatter = ax.scatter(data['Satisfaction'], data['Loyalty'], c=data['Cluster'], cmap='viridis')
+    ax.set_xlabel('Satisfaction')
+    ax.set_ylabel('Loyalty')
+    legend1 = ax.legend(*scatter.legend_elements(), title="Clusters")
+    ax.add_artist(legend1)
+    st.pyplot(fig)
+
+    # Predict loyalty score based on cluster label
+    loyalty_scores = np.linspace(0, 1, k)
+
+    # Add loyalty scores to data
+    data['Loyalty Score'] = data['Cluster'].apply(lambda x: loyalty_scores[x])
+
+    # Display clustered data with loyalty scores
+    st.markdown('<div class="subheader">Clustered Data with Loyalty Scores</div>', unsafe_allow_html=True)
+    st.write(data)
+else:
+    st.markdown('<div class="uploadedFile">Please upload a CSV file to proceed.</div>', unsafe_allow_html=True)
