@@ -1,10 +1,5 @@
 import csv
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
-import numpy as np
-from sklearn.cluster import KMeans
-from sklearn import preprocessing
+import math
 
 # Load the data
 data = []
@@ -12,57 +7,87 @@ with open('MarketData.csv', 'r') as file:
     reader = csv.reader(file)
     next(reader)  # Skip the header
     for row in reader:
-        data.append([float(x) for x in row])
+        data.append(row)
 
-# Convert the data to a Pandas DataFrame
-df = pd.DataFrame(data, columns=['Satisfaction', 'Loyalty', 'Age', 'Gender'])
+# Convert data to float
+for i in range(len(data)):
+    for j in range(len(data[i])):
+        data[i][j] = float(data[i][j])
 
-# Plot the data
-plt.scatter(df['Satisfaction'], df['Loyalty'])
-plt.xlabel('Satisfaction')
-plt.ylabel('Loyalty')
+# Define functions for plotting
+def plot_scatter(data, x, y):
+    for i in range(len(data)):
+        print(f"({data[i][x]}, {data[i][y]})")
 
-# Plot the Age
-plt.xticks([i for i in range(0, 101, 5)])
-plt.hist(df['Age'])
+def plot_histogram(data, column):
+    freq = {}
+    for i in range(len(data)):
+        if data[i][column] in freq:
+            freq[data[i][column]] += 1
+        else:
+            freq[data[i][column]] = 1
+    for key, value in freq.items():
+        print(f"{key}: {value}")
 
-# Plot the Gender
-li = [0, 0]
-for i in df['Gender']:
-    li[i] += 1
-labels = ['Male', 'Female']
-colors = ['Turquoise', 'Orange']
-plt.pie(li, labels=labels, colors=colors, autopct="%1.1f%%", shadow=True)
+def plot_pie(data, column):
+    freq = {}
+    for i in range(len(data)):
+        if data[i][column] in freq:
+            freq[data[i][column]] += 1
+        else:
+            freq[data[i][column]] = 1
+    for key, value in freq.items():
+        print(f"{key}: {value} ({value/len(data)*100:.2f}%)")
 
-# Select the features
-x = df[['Satisfaction', 'Loyalty']]
+# Data exploration
+plot_scatter(data, 0, 1)
+plot_histogram(data, 2)
+plot_pie(data, 3)
+
+# Feature selection
+x = [[row[0], row[1]] for row in data]
 
 # Clustering
-kmeans = KMeans(4)
-kmeans.fit(x)
+def euclidean_distance(x, y):
+    return math.sqrt((x[0] - y[0])**2 + (x[1] - y[1])**2)
 
-# Clustering results
-clusters = x.copy()
-clusters['cluster_pred'] = kmeans.fit_predict(x)
+def kmeans_clustering(x, k):
+    # Initialize centroids randomly
+    centroids = [x[i] for i in range(k)]
+    labels = [0] * len(x)
+    while True:
+        new_labels = []
+        for i in range(len(x)):
+            distances = [euclidean_distance(x[i], centroid) for centroid in centroids]
+            label = distances.index(min(distances))
+            new_labels.append(label)
+        if new_labels == labels:
+            break
+        labels = new_labels
+        centroids = [[0, 0] for _ in range(k)]
+        counts = [0] * k
+        for i in range(len(x)):
+            centroids[labels[i]][0] += x[i][0]
+            centroids[labels[i]][1] += x[i][1]
+            counts[labels[i]] += 1
+        for i in range(k):
+            centroids[i][0] /= counts[i]
+            centroids[i][1] /= counts[i]
+    return labels
 
-# Standardize the variables
-x_scaled = preprocessing.scale(x)
+labels = kmeans_clustering(x, 4)
 
-# Take advantage of the Elbow method
-wcss = []
-for i in range(1, 10):
-    # Cluster solution with i clusters
-    kmeans = KMeans(i)
-    kmeans.fit(x_scaled)
-    wcss.append(kmeans.inertia_)
+# Add cluster labels to data
+for i in range(len(data)):
+    data[i].append(labels[i])
 
-# Explore clustering solutions and select the number of clusters
-kmeans_new = KMeans(5)
-kmeans_new.fit(x_scaled)
-clusters_new = x.copy()
-clusters_new['cluster_pred'] = kmeans_new.fit_predict(x_scaled)
+# Predict loyalty score based on cluster label
+loyalty_scores = [0, 0.5, 0.8, 1]
 
-# Plot the final result
-plt.scatter(clusters_new['Satisfaction'], clusters_new['Loyalty'], c=clusters_new['cluster_pred'], cmap='rainbow')
-plt.xlabel('Satisfaction')
-plt.ylabel('Loyalty')
+# Add loyalty scores to data
+for i in range(len(data)):
+    data[i].append(loyalty_scores[data[i][4]])
+
+# Visualize clustered data with loyalty scores
+for i in range(len(data)):
+    print(f"({data[i][0]}, {data[i][1]}) - Cluster {data[i][4]} - Loyalty Score {data[i][5]}")
